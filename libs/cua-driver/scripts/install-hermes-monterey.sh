@@ -10,6 +10,7 @@ ENV_DIR="${HOME}/.hermes"
 ENV_FILE="$ENV_DIR/cua-driver-monterey.env"
 LINK_PATH="$INSTALL_DIR/cua-driver-monterey"
 STANDARD_LINK_PATH="$INSTALL_DIR/cua-driver"
+REALPATH_SHIM="$INSTALL_DIR/realpath"
 LINKER_WRAPPER="$RUST_ROOT/scripts/clang-monterey-linker.sh"
 APP_ROOT="${HOME}/Applications/CuaDriver.app"
 APP_CONTENTS="$APP_ROOT/Contents"
@@ -38,6 +39,28 @@ command -v xcrun >/dev/null 2>&1 || { echo "error: Xcode Command Line Tools are 
 chmod +x "$LINKER_WRAPPER"
 
 mkdir -p "$INSTALL_DIR" "$ENV_DIR" "$HOME/Applications"
+
+# Monterey does not always provide a `realpath` command. Hermes/browser-use
+# startup helpers may assume it exists, so install a tiny compatible fallback
+# only when no realpath is already available.
+if ! command -v realpath >/dev/null 2>&1; then
+    cat > "$REALPATH_SHIM" <<'PY'
+#!/usr/bin/env python3
+import os
+import sys
+
+if len(sys.argv) < 2:
+    print("realpath: missing operand", file=sys.stderr)
+    sys.exit(1)
+
+for path in sys.argv[1:]:
+    print(os.path.realpath(path))
+PY
+    chmod +x "$REALPATH_SHIM"
+    echo "==> Installed Monterey realpath compatibility shim: $REALPATH_SHIM"
+fi
+
+export PATH="$INSTALL_DIR:$PATH"
 
 echo "==> Building Monterey cua-driver for Hermes"
 cd "$RUST_ROOT"
@@ -102,7 +125,6 @@ if ! grep -Fq "$MARKER" "$SHELL_RC" 2>/dev/null; then
     } >> "$SHELL_RC"
 fi
 
-export PATH="$INSTALL_DIR:$PATH"
 export HERMES_CUA_DRIVER_CMD="$LINK_PATH"
 export CUA_DRIVER_RS_TELEMETRY_ENABLED=0
 
@@ -114,6 +136,13 @@ echo "==> Hermes env: $ENV_FILE"
 
 open -n -g -a CuaDriver --args serve >/dev/null 2>&1 || true
 sleep 2
+
+if command -v browser-use >/dev/null 2>&1; then
+    echo "==> Browser Use detected: $(command -v browser-use)"
+    browser-use --help >/dev/null 2>&1 && echo "==> Browser Use CLI: ok" || echo "warning: browser-use exists but failed its --help check"
+else
+    echo "note: browser-use CLI was not found in PATH; realpath compatibility is ready if/when it is installed."
+fi
 
 if command -v hermes >/dev/null 2>&1; then
     echo "==> Hermes computer-use status"
