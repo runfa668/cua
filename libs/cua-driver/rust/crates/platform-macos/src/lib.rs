@@ -1,10 +1,7 @@
 //! macOS platform backend for cua-driver-rs.
 //!
-//! Provides background automation on macOS via:
-//! - Accessibility (AX) API for UI tree walking and element interaction
-//! - CGEvent / SkyLight SPI for background mouse and keyboard injection
-//! - NSRunningApplication / NSWorkspace for app enumeration and lifecycle
-//! - CGWindow / system screencapture compatibility path for screenshots
+//! Monterey compatibility branch: AX/input remain native; still screenshots
+//! use the system screencapture utility to avoid macOS 14+ screenshot APIs.
 
 #[cfg(target_os = "macos")]
 pub mod apps;
@@ -15,6 +12,7 @@ mod background_mutation;
 #[cfg(target_os = "macos")]
 pub mod browser;
 #[cfg(target_os = "macos")]
+#[path = "capture_monterey.rs"]
 pub mod capture;
 #[cfg(target_os = "macos")]
 pub mod cursor;
@@ -40,9 +38,6 @@ pub mod session;
 pub mod terminal;
 #[cfg(target_os = "macos")]
 pub mod tools;
-// Monterey compatibility: keep the public video_sckit module name expected by
-// callers, but source it from the compatibility shim instead of the macOS 15
-// SCRecordingOutput implementation.
 #[cfg(target_os = "macos")]
 #[path = "video_sckit_monterey.rs"]
 pub mod video_sckit;
