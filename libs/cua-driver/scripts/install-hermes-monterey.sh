@@ -14,6 +14,7 @@ INSTALL_DIR="${HOME}/.local/bin"
 ENV_DIR="${HOME}/.hermes"
 ENV_FILE="$ENV_DIR/cua-driver-monterey.env"
 LINK_PATH="$INSTALL_DIR/cua-driver-monterey"
+LINKER_WRAPPER="$RUST_ROOT/scripts/clang-monterey-linker.sh"
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
     echo "error: this installer is only for macOS" >&2
@@ -42,11 +43,22 @@ if ! command -v xcrun >/dev/null 2>&1; then
     exit 1
 fi
 
+if [[ ! -f "$LINKER_WRAPPER" ]]; then
+    echo "error: Monterey linker wrapper was not found at $LINKER_WRAPPER" >&2
+    exit 1
+fi
+chmod +x "$LINKER_WRAPPER"
+
 mkdir -p "$INSTALL_DIR" "$ENV_DIR"
 
 echo "==> Building Monterey cua-driver for Hermes"
 cd "$RUST_ROOT"
-MACOSX_DEPLOYMENT_TARGET=12.3 cargo build --release -p cua-driver
+# Some transitive macOS Rust crates still emit legacy `-ldispatch`. Monterey's
+# SDK requires linking that API through System.framework instead. Route the
+# final link through our narrow wrapper, which rewrites only that argument.
+MACOSX_DEPLOYMENT_TARGET=12.3 \
+CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER="$LINKER_WRAPPER" \
+cargo build --release -p cua-driver
 
 BIN="$RUST_ROOT/target/release/cua-driver"
 if [[ ! -x "$BIN" ]]; then
