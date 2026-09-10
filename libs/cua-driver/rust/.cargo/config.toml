@@ -1,5 +1,7 @@
 [env]
-MACOSX_DEPLOYMENT_TARGET = "13.0"
+# Monterey compatibility branch: ScreenCaptureKit itself is available from
+# macOS 12.3, so build the Rust workspace with 12.3 as the deployment target.
+MACOSX_DEPLOYMENT_TARGET = "12.3"
 
 # Release archives must run on clean Windows hosts without the Visual C++
 # Redistributable. Keep both MSVC targets statically linked to the CRT.
