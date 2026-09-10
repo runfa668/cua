@@ -45,10 +45,6 @@ objc2-app-kit = { version = "0.2", features = [
     "NSApplication", "NSWindow", "NSScreen", "NSColor",
     "NSEvent", "NSRunningApplication", "NSWorkspace",
     "NSView", "NSGraphicsContext", "NSResponder",
-    # Picture-in-picture preview window (experimental) — NSImageView /
-    # NSImage for the post-action screenshot, NSTextField for the
-    # one-line action label, NSPanel/NSImageCell are reachable via
-    # transitive deps.
     "NSImage", "NSImageView", "NSTextField", "NSControl", "NSCell",
     "block2", "libc",
 ] }
@@ -56,11 +52,10 @@ objc2-app-kit = { version = "0.2", features = [
 # QuartzCore for CALayer
 objc2-quartz-core = { version = "0.2", features = ["CALayer"] }
 
-# Native ScreenCaptureKit bindings — used by `video_sckit` to replace the
-# ffmpeg subprocess on macOS. `macos_15_0` enables the `SCRecordingOutput`
-# convenience that finalises an mp4 in-process, removing the per-binary
-# Screen Recording TCC prompt that subprocess capture would otherwise trip.
-screencapturekit = { version = "6", features = ["macos_15_0"] }
+# Monterey compatibility: do not enable the macOS 15 SCRecordingOutput API.
+# The compatibility build uses the system screencapture command for still
+# images and a stub video backend for native recording.
+screencapturekit = { version = "6" }
 security-framework = { version = "3.7.0", default-features = false, features = ["OSX_10_15"] }
 zeroize = { workspace = true }
 getrandom = { workspace = true }
