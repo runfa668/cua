@@ -3,6 +3,37 @@
 //! Monterey compatibility branch: AX/input remain native; still screenshots
 //! use the system screencapture utility to avoid macOS 14+ screenshot APIs.
 
+// Rust 2018 resolves `use screencapturekit::...` as an external crate path.
+// Alias this crate to that name and expose the tiny `prelude` surface used by
+// check_permissions, avoiding the real Swift-backed screencapturekit crate.
+#[cfg(target_os = "macos")]
+extern crate self as screencapturekit;
+
+#[cfg(target_os = "macos")]
+pub mod prelude {
+    pub struct SCShareableContent {
+        capturable: bool,
+    }
+
+    pub struct SCDisplay;
+
+    impl SCShareableContent {
+        pub fn get() -> Result<Self, &'static str> {
+            Ok(Self {
+                capturable: crate::permissions::status::screen_recording_granted(),
+            })
+        }
+
+        pub fn displays(&self) -> Vec<SCDisplay> {
+            if self.capturable {
+                vec![SCDisplay]
+            } else {
+                Vec::new()
+            }
+        }
+    }
+}
+
 #[cfg(target_os = "macos")]
 pub mod apps;
 #[cfg(target_os = "macos")]
@@ -34,9 +65,6 @@ pub mod pip;
 pub mod recording_hooks;
 #[cfg(target_os = "macos")]
 pub mod session;
-#[cfg(target_os = "macos")]
-#[path = "screencapturekit_monterey.rs"]
-pub mod screencapturekit;
 #[cfg(target_os = "macos")]
 pub mod terminal;
 #[cfg(target_os = "macos")]
