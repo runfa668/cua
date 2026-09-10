@@ -4,7 +4,7 @@
 //! - Accessibility (AX) API for UI tree walking and element interaction
 //! - CGEvent / SkyLight SPI for background mouse and keyboard injection
 //! - NSRunningApplication / NSWorkspace for app enumeration and lifecycle
-//! - CGWindow / ScreenCaptureKit for window enumeration and screenshots
+//! - CGWindow / system screencapture compatibility path for screenshots
 
 #[cfg(target_os = "macos")]
 pub mod apps;
@@ -40,7 +40,11 @@ pub mod session;
 pub mod terminal;
 #[cfg(target_os = "macos")]
 pub mod tools;
+// Monterey compatibility: keep the public video_sckit module name expected by
+// callers, but source it from the compatibility shim instead of the macOS 15
+// SCRecordingOutput implementation.
 #[cfg(target_os = "macos")]
+#[path = "video_sckit_monterey.rs"]
 pub mod video_sckit;
 #[cfg(target_os = "macos")]
 pub mod window_change_detector;
@@ -49,16 +53,10 @@ pub mod windows;
 
 use cua_driver_core::tool::ToolRegistry;
 
-/// Register all macOS tools.  For programs that don't restructure `main`
-/// (e.g. test harnesses), the overlay is skipped.
 pub fn register_tools() -> ToolRegistry {
     register_tools_with_compat(false)
 }
 
-/// Same as `register_tools` but lets the caller pick the Claude Code
-/// computer-use compat mode. `compat=true` swaps the regular `screenshot`
-/// tool for the window-scoped variant (pid + window_id required,
-/// JPEG @ 85%, text note pointing at pixel tools).
 pub fn register_tools_with_compat(compat: bool) -> ToolRegistry {
     #[cfg(target_os = "macos")]
     {
@@ -73,16 +71,6 @@ pub fn register_tools_with_compat(compat: bool) -> ToolRegistry {
     }
 }
 
-/// Register all macOS tools and initialise the cursor overlay channel.
-///
-/// After calling this, `main()` must call
-/// `platform_macos::cursor::overlay::run_on_main_thread()` on the OS
-/// main thread to actually display the overlay.
-///
-/// `compat=true` enables Claude Code computer-use compatibility mode:
-/// the regular `screenshot` tool is replaced by a window-scoped variant
-/// (pid + window_id required, JPEG @ 85%, text note pointing at pixel
-/// tools). See `tools::screenshot_compat`.
 pub fn register_tools_with_cursor(
     cfg: cursor_overlay::CursorConfig,
     compat: bool,
@@ -98,10 +86,6 @@ pub fn register_tools_with_cursor(
     )
 }
 
-/// Register all macOS tools with a constructor-installed protected host.
-///
-/// This is used by the canonical SDK runtime. The original public constructor
-/// remains unchanged for callers that do not host protected consent.
 pub fn register_tools_with_cursor_and_provider(
     provider: Option<std::sync::Arc<dyn cua_driver_core::consent::ProtectedConsentProvider>>,
     cfg: cursor_overlay::CursorConfig,
