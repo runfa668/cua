@@ -12,6 +12,10 @@ fn main() {
     println!("cargo:rustc-link-lib=framework=QuartzCore");
     println!("cargo:rustc-link-lib=framework=CoreGraphics");
 
+    // Only add the SDK framework search path. Do NOT add SDK/usr/lib or
+    // SDK/usr/lib/system on Monterey: doing so makes `-ldispatch` resolve
+    // directly to libdispatch.tbd, which the Monterey linker rejects in favor
+    // of the System umbrella framework.
     let sdk_root = std::env::var("SDKROOT").unwrap_or_else(|_| {
         let out = std::process::Command::new("xcrun")
             .args(["--sdk", "macosx", "--show-sdk-path"])
@@ -23,8 +27,6 @@ fn main() {
     });
 
     if !sdk_root.is_empty() {
-        println!("cargo:rustc-link-search={sdk_root}/usr/lib/system");
-        println!("cargo:rustc-link-search={sdk_root}/usr/lib");
         println!("cargo:rustc-link-search=framework={sdk_root}/System/Library/Frameworks");
     }
 }
