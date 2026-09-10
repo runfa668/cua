@@ -35,6 +35,9 @@ pub mod recording_hooks;
 #[cfg(target_os = "macos")]
 pub mod session;
 #[cfg(target_os = "macos")]
+#[path = "screencapturekit_monterey.rs"]
+pub mod screencapturekit;
+#[cfg(target_os = "macos")]
 pub mod terminal;
 #[cfg(target_os = "macos")]
 pub mod tools;
