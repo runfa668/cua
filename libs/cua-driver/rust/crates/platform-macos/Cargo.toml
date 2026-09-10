@@ -15,9 +15,6 @@ image = { workspace = true }
 async-trait = "0.1"
 uuid = { workspace = true }
 time = { workspace = true }
-# Insertion-ordered map for the keyed per-session cursor render collection.
-# IndexMap gives deterministic iteration order = stable cursor z-order frame
-# to frame (a plain HashMap would flicker overlapping cursors).
 indexmap = "2"
 cua-driver-core = { path = "../cua-driver-core" }
 cua-driver-contract = { path = "../cua-driver-contract" }
@@ -26,13 +23,11 @@ pip-preview = { path = "../pip-preview" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 clipboard-rs = "0.3.5"
-# macOS system bindings
 core-foundation = "0.10"
 core-graphics = { version = "0.24", features = ["highsierra", "elcapitan"] }
 foreign-types = "0.5"
 libc = "0.2"
 block2 = "0.5"
-# objc2 and its AppKit/CoreFoundation bindings
 objc2 = "0.5"
 objc2-foundation = { version = "0.2", features = [
     "NSArray", "NSString", "NSDictionary", "NSRunLoop",
@@ -48,22 +43,15 @@ objc2-app-kit = { version = "0.2", features = [
     "NSImage", "NSImageView", "NSTextField", "NSControl", "NSCell",
     "block2", "libc",
 ] }
-
-# QuartzCore for CALayer
 objc2-quartz-core = { version = "0.2", features = ["CALayer"] }
 
-# Monterey compatibility: do not enable the macOS 15 SCRecordingOutput API.
-# The compatibility build uses the system screencapture command for still
-# images and a stub video backend for native recording.
-screencapturekit = { version = "6" }
+# Monterey compatibility branch intentionally has no screencapturekit crate.
+# Still captures use /usr/sbin/screencapture and native video recording is
+# stubbed, removing the Swift bridge/toolchain dependency entirely.
 security-framework = { version = "3.7.0", default-features = false, features = ["OSX_10_15"] }
 zeroize = { workspace = true }
 getrandom = { workspace = true }
-
-# tiny-skia for cursor rendering
 tiny-skia = { version = "0.11", default-features = false, features = ["std"] }
-
-# WebSocket CDP client (used by browser/cdp_client.rs for the page tool)
 tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
 futures-util = "0.3"
 
