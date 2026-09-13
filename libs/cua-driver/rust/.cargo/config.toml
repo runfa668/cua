@@ -1,5 +1,5 @@
 [env]
-MACOSX_DEPLOYMENT_TARGET = "13.0"
+MACOSX_DEPLOYMENT_TARGET = "12.3"
 
 # Release archives must run on clean Windows hosts without the Visual C++
 # Redistributable. Keep both MSVC targets statically linked to the CRT.
