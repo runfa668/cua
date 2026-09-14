@@ -15,6 +15,9 @@ LINKER_WRAPPER="$RUST_ROOT/scripts/clang-monterey-linker.sh"
 APP_ROOT="$HOME/Applications/CuaDriver.app"
 APP_MACOS="$APP_ROOT/Contents/MacOS"
 APP_BIN="$APP_MACOS/cua-driver"
+SHELL_ENV_FILE="$HOME/.zshenv"
+MANAGED_BEGIN="# >>> cua-driver-monterey (managed) >>>"
+MANAGED_END="# <<< cua-driver-monterey (managed) <<<"
 
 [[ "$(uname -s)" == "Darwin" ]] || { echo "error: macOS only" >&2; exit 1; }
 command -v cargo >/dev/null || { echo "error: cargo not found" >&2; exit 1; }
@@ -95,12 +98,42 @@ fi
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 [[ -x "$LSREGISTER" ]] && "$LSREGISTER" -f "$APP_ROOT" >/dev/null 2>&1 || true
 
+# Keep the standalone env file for diagnostics/backward compatibility.
 cat > "$ENV_FILE" <<EOF
 export PATH="$BIN_DIR:$HOME/.cargo/bin:\$PATH"
 export HERMES_CUA_DRIVER_CMD="$LINK_PATH"
 export CUA_DRIVER_RS_PERMISSIONS_GATE=0
 export CUA_DRIVER_RS_TELEMETRY_ENABLED=0
 EOF
+
+# Persist Hermes driver selection for normal future shells. This managed block
+# is replaced in-place on repeat installs, so the file never accumulates
+# duplicate exports. ~/.zshenv is read by every zsh invocation on macOS,
+# including non-interactive shells used to launch CLI tools.
+touch "$SHELL_ENV_FILE"
+TMP_ENV_FILE="$(mktemp)"
+awk -v begin="$MANAGED_BEGIN" -v end="$MANAGED_END" '
+  $0 == begin { skip=1; next }
+  $0 == end   { skip=0; next }
+  !skip       { print }
+' "$SHELL_ENV_FILE" > "$TMP_ENV_FILE"
+cat >> "$TMP_ENV_FILE" <<EOF
+$MANAGED_BEGIN
+export PATH="$BIN_DIR:$HOME/.cargo/bin:\$PATH"
+export HERMES_CUA_DRIVER_CMD="$LINK_PATH"
+export CUA_DRIVER_RS_PERMISSIONS_GATE=0
+export CUA_DRIVER_RS_TELEMETRY_ENABLED=0
+$MANAGED_END
+EOF
+mv "$TMP_ENV_FILE" "$SHELL_ENV_FILE"
+
+echo "==> Hermes driver selection persisted in $SHELL_ENV_FILE"
+
+# Also publish the same values into the current login session so processes
+# launched after installation can inherit them without waiting for logout.
+launchctl setenv HERMES_CUA_DRIVER_CMD "$LINK_PATH" >/dev/null 2>&1 || true
+launchctl setenv CUA_DRIVER_RS_PERMISSIONS_GATE 0 >/dev/null 2>&1 || true
+launchctl setenv CUA_DRIVER_RS_TELEMETRY_ENABLED 0 >/dev/null 2>&1 || true
 
 export HERMES_CUA_DRIVER_CMD="$LINK_PATH"
 
@@ -117,3 +150,4 @@ if command -v hermes >/dev/null 2>&1; then
 fi
 
 echo "Installation complete. cargo clean is safe for the installed driver."
+echo "Open a new terminal and run: hermes -t computer_use chat"
