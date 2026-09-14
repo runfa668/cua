@@ -49,15 +49,24 @@ DRIVER_VERSION="$($PERSISTENT_BIN --version | awk '{print $NF}')"
 BUNDLE_VERSION="$(printf '%s' "$DRIVER_VERSION" | tr -cd '0-9')"
 [[ -n "$BUNDLE_VERSION" ]] || BUNDLE_VERSION="281"
 
-# Stop the old daemon before replacing the executable. Keep the existing app
-# bundle directory instead of deleting/recreating it so Monterey sees the most
-# stable bundle path/identity possible across upgrades.
+# Stop the old daemon before touching the app bundle.
 "$LINK_PATH" stop >/dev/null 2>&1 || true
 mkdir -p "$APP_MACOS"
-cp "$PERSISTENT_BIN" "$APP_BIN"
-chmod +x "$APP_BIN"
 
-cat > "$APP_ROOT/Contents/Info.plist" <<PLIST
+# Replacing and ad-hoc re-signing the same app on Monterey can invalidate a
+# previously granted TCC decision. If the bundled executable already matches
+# the newly built driver byte-for-byte, leave the app bundle and its signature
+# alone. Only update/re-sign when the actual driver binary changed.
+APP_NEEDS_UPDATE=1
+if [[ -x "$APP_BIN" ]] && cmp -s "$PERSISTENT_BIN" "$APP_BIN"; then
+  APP_NEEDS_UPDATE=0
+fi
+
+if [[ "$APP_NEEDS_UPDATE" -eq 1 ]]; then
+  cp "$PERSISTENT_BIN" "$APP_BIN"
+  chmod +x "$APP_BIN"
+
+  cat > "$APP_ROOT/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -78,7 +87,10 @@ cat > "$APP_ROOT/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-codesign --force --deep --sign - "$APP_ROOT" >/dev/null 2>&1 || true
+  codesign --force --deep --sign - "$APP_ROOT" >/dev/null 2>&1 || true
+else
+  echo "==> CuaDriver.app binary unchanged; preserving existing bundle signature/TCC identity"
+fi
 
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 [[ -x "$LSREGISTER" ]] && "$LSREGISTER" -f "$APP_ROOT" >/dev/null 2>&1 || true
